@@ -1,0 +1,48 @@
+name: Blackduck
+
+on:
+ schedule:
+  # run scans twice a month
+  - cron:  '0 0 2,16 * *'
+
+jobs:
+  blackduck:
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Checkout Code
+      uses: actions/checkout@v2
+
+    - uses: actions/setup-node@v1
+      with:
+        node-version: '16'
+
+    - name: Restore from Cache
+      uses: actions/cache@v2
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+
+    - run: npm install
+    - run: npm run build 
+    
+    # Content-Service
+    - name: Run Synopsys Detect - Content-Service
+      uses: synopsys-sig/detect-action@v0.3.2
+      env:
+        DETECT_PROJECT_NAME: content-service
+        DETECT_EXCLUDED_DIRECTORIES: node_modules
+        DETECT_PROJECT_VERSION_NAME: default
+        DETECT_NPM_INCLUDE_DEV_DEPENDENCIES: "FALSE"
+        # DETECT_DETECTOR_SEARCH_EXCLUSION_DEFAULTS: "true"
+        DETECT_DETECTOR_SEARCH_DEPTH: 3
+        DETECT_DETECTOR_SEARCH_CONTINUE: "true"
+
+      with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          detect-version: 7.9.0
+          blackduck-url: ${{ secrets.BLACKDUCK_URL }}
+          blackduck-api-token: ${{ secrets.BLACKDUCK_API_KEY }}
+          scan-mode: INTELLIGENT
